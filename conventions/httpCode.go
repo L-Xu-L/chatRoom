@@ -1,0 +1,11 @@
+package conventions
+
+const (
+	OK = 200
+	CREATED = 201
+	NOTMODIFIED = 304
+	BADREQUEST = 400
+	FORBIDDEN = 403
+	NOTFOUND = 404
+	SYSTEM = 500
+)
