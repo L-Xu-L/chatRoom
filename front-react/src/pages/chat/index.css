@@ -1,0 +1,10 @@
+.chat_container{
+    background:grey;
+    height:100%;
+    width:100%;
+    position: absolute;
+}
+
+.chat_container .content {
+    display: flex;
+}

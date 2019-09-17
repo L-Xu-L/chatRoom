@@ -1,0 +1,10 @@
+const OK = 200
+const CREATED = 201
+const ACCEPT = 202
+const NOTAUTH = 403
+const NOTFOUND = 404
+const BADREQUEST = 300
+
+export default {
+    OK,CREATED,ACCEPT,NOTAUTH,NOTFOUND,BADREQUEST
+}
