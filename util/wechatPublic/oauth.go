@@ -1,6 +1,7 @@
 package wechatPublic
 
 import (
+	"chatRoom/conventions"
 	"encoding/json"
 	"fmt"
 	"github.com/kataras/iris/core/errors"
@@ -9,8 +10,8 @@ import (
 )
 
 const (
-	appId = "wx941a4cc933c6f96a"
-	appSerect = "88dee3d6edaad91ef6a3f152f584340c"
+	appId = conventions.APPID
+	appSerect = conventions.APPSERECT
 )
 
 /**

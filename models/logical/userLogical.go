@@ -3,13 +3,13 @@ package logical
 import (
 	"chatRoom/models/entitys"
 	"chatRoom/util/wechatPublic"
-	"log"
+	"github.com/kataras/golog"
 	"time"
 )
 
 func BuildUserInserData(code string) *entitys.UserEntity{
 	userInfo := getWechatUserInfo(code)
-	if userInfo != nil {
+	if userInfo == nil {
 		return nil
 	}
 	return &entitys.UserEntity{
@@ -28,12 +28,12 @@ func getWechatUserInfo(code string) *wechatPublic.UserInfo{
 	//如果code不存在则重定向获取code
 	oauth,err := wechatPublic.GetAccessToken(code)
 	if err != nil {
-		log.Printf("get error when access_token wechatPublic #%v",err)
+		golog.Infof("get error when access_token wechatPublic #%v",err)
 		return nil
 	}
 	userInfo,err := wechatPublic.GetUserInfo(oauth.AccessToken,oauth.Openid)
 	if err != nil {
-		log.Printf("get error when userInfo wechatPublic #%v",err)
+		golog.Infof("get error when userInfo wechatPublic #%v",err)
 		return nil
 	}
 	return userInfo

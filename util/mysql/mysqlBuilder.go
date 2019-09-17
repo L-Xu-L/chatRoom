@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+/**
+	自己封装的mysql构造器
+ */
+
 type SqlBuilder struct {
 	field string
 	where []WhereBuilder
@@ -158,6 +162,7 @@ func (this *SqlBuilder) First() (*sql.Row,error) {
 		return nil,err
 	}
 	defer stmt.Close()
+	defer this.flush()
 	return stmt.QueryRow(this.value...), nil
 }
 
@@ -174,6 +179,7 @@ func (this *SqlBuilder) All() (*sql.Rows,error){
 		return nil,err
 	}
 	defer stmt.Close()
+	defer this.flush()
 	return rows,nil
 }
 
@@ -189,13 +195,17 @@ func (this *SqlBuilder) Insert(insertData map[string]interface{}) (int64,error) 
 		valueCollection += "?,"
 		this.value = append(this.value,value)
 	}
+	//访问完毕清除条件
+	defer func() {
+		this.value = nil
+	}()
+
 	field := strings.TrimRight(fieldCollection, ",") + ")"
 	value := strings.TrimRight(valueCollection, ",") + ")"
 	sql += field + "VALUES" + value
 
 	//更新最后一条执行的sql
 	this.lastSql = sql
-
 	//是否开启事务
 	if this.tx == nil {
 		result, err := pool.Exec(sql, this.value...)
@@ -241,6 +251,7 @@ func (this *SqlBuilder) Update(updateData map[string]interface{}) (int64,error){
 	//更新最后一条执行的sql
 	this.lastSql = sql
 
+	defer this.flush()
 	if this.tx == nil {
 		result, err := pool.Exec(sql, this.value...)
 		if err != nil {
@@ -265,7 +276,7 @@ func (this *SqlBuilder) Update(updateData map[string]interface{}) (int64,error){
 }
 
 /**
-删除语句
+	删除语句
 */
 func (this *SqlBuilder) Delete() (int64,error){
 	if len(this.where) == 0 {
@@ -275,6 +286,7 @@ func (this *SqlBuilder) Delete() (int64,error){
 	sql := "DELETE FROM " + this.table + " WHERE " + this.parseWhere()
 	this.lastSql = sql
 
+	defer this.flush()
 	if this.tx == nil {
 		result, err := pool.Exec(sql, this.value...)
 		if err != nil {
@@ -387,6 +399,7 @@ func (this *SqlBuilder) Exec(sql string) sql.Result{
 	result, _ := pool.Exec(sql)
 	return result
 }
+
 /**
 	解析where条件
  */
@@ -489,6 +502,7 @@ func (this *SqlBuilder) Commit() error {
 	var err error
 	if this.tx != nil {
 		err = this.tx.Commit()
+		this.flush()
 	} else {
 		err = errors.New("transaction not start")
 	}
@@ -502,9 +516,24 @@ func (this *SqlBuilder) Rollback() error {
 	var err error
 	if this.tx != nil {
 		err = this.tx.Rollback()
+		this.flush()
 	} else {
 		err = errors.New("transaction not start")
 	}
 	return err
 }
 
+/**
+	清空查询缓存
+ */
+func (this *SqlBuilder) flush() {
+	this.value = nil
+	this.where = nil
+	this.lock = false
+	this.start = -1
+	this.limit = -1
+	this.alias = ""
+	this.order = ""
+	this.join = nil
+	this.tx = nil
+}

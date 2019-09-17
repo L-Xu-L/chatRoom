@@ -1,41 +1,57 @@
 package controllers
 
 import (
+	"chatRoom/models/data"
 	"chatRoom/models/logical"
 	"chatRoom/models/services"
-	"chatRoom/response"
+	"github.com/kataras/golog"
 	"github.com/kataras/iris"
-	"github.com/kataras/iris/mvc"
-	"log"
 	"time"
 )
 
 type LoginController struct {
 	Ctx iris.Context
 	services.UserService
+	data.AuthData
 }
 
-func (c *LoginController) Get() mvc.Result {
+func (c *LoginController) Get() {
 	//todo 回去使用service层调用model实现把数据写入数据库中,然后转发到聊天室主页,把websocket的数据放入redis或者map中,构建组号
 	code := c.Ctx.URLParam("code")	//获取code
 	state := c.Ctx.URLParam("state") //获取state
 	if code == "" && state == "" {
-		return response.InvalidParam("error param","")
+		_ = c.Ctx.View("login_error.html")
 	}
+
 	userData := logical.BuildUserInserData(code)
-	if user,err := c.UserService.GetUserByOpenid(userData.Openid);err != nil {
+	if userData == nil {
+		_ = c.Ctx.View("login_error.html")
+		return
+	}
+
+	if user,err := c.UserService.GetUserByOpenid(userData.Openid);err == nil {
+		//根据openid获取用户信息,如果用户不在数据库中则实现注册
 		if user == nil {
-			user, err := c.UserService.Login(*userData)
+			user, err = c.UserService.Login(*userData)
 			if err != nil {
-				return response.System("system error","")
+				golog.Infof("have error where user login #%v",err)
+				_ = c.Ctx.View("login_error.html")
 			}
-			return response.CreateSuccess("登录成功!",user)
 		}
-		user.LoginAt = time.Now().Unix()
-		return response.CreateSuccess("登录成功!",user)
+		//更新最近一次登录时间
+		go func() {
+			user.LoginAt = time.Now().Unix()
+			c.UserService.Save(user)
+		}()
+		//注册token
+		token := c.AuthData.GenerateToken(user)
+		// 渲染模板文件： ./views/hello.html
+		c.Ctx.ViewData("token",token)
+		c.Ctx.ViewData("state",state)
+		_ = c.Ctx.View("login_success.html")
 	} else {
-		log.Fatalf("have error where getUserByOpenid #%v",err)
-		return response.System("system error","")
+		golog.Warnf("have error where getUserByOpenid #%v",err)
+		_ = c.Ctx.View("login_error.html")
 	}
 }
 

@@ -3,6 +3,7 @@ package repositories
 import (
 	"chatRoom/models/entitys"
 	"chatRoom/util/mysql"
+	"database/sql"
 	"github.com/goinggo/mapstructure"
 )
 
@@ -14,13 +15,11 @@ const (
 	TABLE = "user"
 )
 
-
-// MovieRepository处理电影实体/模型的基本操作。
-//它是一个可测试的接口，即一个内存电影库或连接到sql数据库。
 type UserRepository interface {
 	Create(map[string]interface{}) (*entitys.UserEntity,error)
-	GetUserById(idUser int64) (*entitys.UserEntity,error)
+	GetUserById(int64) (*entitys.UserEntity,error)
 	GetUserByOpenid(string) (*entitys.UserEntity,error)
+	UpdateUserById(int64,map[string]interface{}) error
 	All() ([]*entitys.UserEntity,error)
 }
 
@@ -81,22 +80,37 @@ func (this *userRepository) Create(data map[string]interface{}) (*entitys.UserEn
 		return nil,err
 	}
 	data["idUser"] = lastId
-	var userEntity entitys.UserEntity
-	if err := mapstructure.Decode(data, &userEntity); err != nil {
+	var user entitys.UserEntity
+	if err := mapstructure.Decode(data, &user); err != nil {
 		return nil,err
 	}
-	return &userEntity,nil
+	return &user,nil
 }
 
+/**
+	根据openid获取用户信息
+ */
 func (this *userRepository)GetUserByOpenid(openid string) (*entitys.UserEntity,error){
 	var user entitys.UserEntity
 	row, err := this.builder.Where("openid","eq",openid).First()
 	if err != nil {
 		return nil,err
 	}
-	err = row.Scan(&user.IdUser, &user.WechatAvatar, &user.WechatAvatar, &user.Openid, &user.CreatedAt, &user.LoginAt, &user.Sex)
-	if err != nil {
+	err = row.Scan(&user.IdUser, &user.WechatName, &user.WechatAvatar, &user.Openid, &user.CreatedAt, &user.LoginAt, &user.Sex)
+	if err == sql.ErrNoRows {
+		return nil,nil
+	} else if err == nil {
+		return &user,nil
+	} else {
 		return nil,err
 	}
-	return &user,nil
+
+}
+
+/**
+	根据id更新用户信息
+ */
+func (this *userRepository) UpdateUserById(idUser int64,data map[string]interface{}) error {
+	_,err := this.builder.Where("idUser", "eq", idUser).Update(data)
+	return err
 }
